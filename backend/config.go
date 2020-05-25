@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/alice-lg/alice-lg/backend/sources"
+	"github.com/alice-lg/alice-lg/backend/sources/bioris"
 	"github.com/alice-lg/alice-lg/backend/sources/birdwatcher"
 	"github.com/alice-lg/alice-lg/backend/sources/gobgp"
 
@@ -16,6 +17,7 @@ import (
 const SOURCE_UNKNOWN = 0
 const SOURCE_BIRDWATCHER = 1
 const SOURCE_GOBGP = 2
+const SOURCE_BIORIS = 3
 
 type ServerConfig struct {
 	Listen                         string `ini:"listen_http"`
@@ -98,7 +100,8 @@ type SourceConfig struct {
 	// Source configurations
 	Type        int
 	Birdwatcher birdwatcher.Config
-	GoBGP 		gobgp.Config
+	GoBGP       gobgp.Config
+	BioRIS      bioris.Config
 
 	// Source instance
 	instance sources.Source
@@ -156,6 +159,8 @@ func getBackendType(section *ini.Section) int {
 		return SOURCE_BIRDWATCHER
 	} else if strings.HasSuffix(name, "gobgp") {
 		return SOURCE_GOBGP
+	} else if strings.HasSuffix(name, "bioris") {
+		return SOURCE_BIORIS
 	}
 
 	return SOURCE_UNKNOWN
@@ -638,15 +643,27 @@ func getSources(config *ini.File) ([]*SourceConfig, error) {
 
 			backendConfig.MapTo(&c)
 			config.Birdwatcher = c
-			
+
 		case SOURCE_GOBGP:
 			c := gobgp.Config{
-				Id: config.Id,
+				Id:   config.Id,
 				Name: config.Name,
 			}
 
 			backendConfig.MapTo(&c)
 			config.GoBGP = c
+		case SOURCE_BIORIS:
+			c := bioris.Config{
+				Id:   config.Id,
+				Name: config.Name,
+			}
+
+			backendConfig.MapTo(&c)
+			config.BioRIS = c
+			//err := config.(*bioris.Config).Verify()
+			//if err != nil {
+			//	return sources, fmt.Errorf("Cout not configure %s", section.Name())
+			//}
 		}
 
 		// Add to list of sources
@@ -727,6 +744,8 @@ func (self *SourceConfig) getInstance() sources.Source {
 		instance = birdwatcher.NewBirdwatcher(self.Birdwatcher)
 	case SOURCE_GOBGP:
 		instance = gobgp.NewGoBGP(self.GoBGP)
+	case SOURCE_BIORIS:
+		instance = bioris.NewBioRIS(self.BioRIS)
 	}
 
 	self.instance = instance
